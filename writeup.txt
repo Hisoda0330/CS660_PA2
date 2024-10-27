@@ -1,0 +1,68 @@
+1. Describe any design decisions you made.
+For the B+ Tree, I make ensure the bufferpool write back the newly created page are written back and managed correctly
+in memory. I use of vector to allow straightforward iteration and munipulation of tuples. The insertion of tuple is 
+responsible to insert a new tuple into the B+ Tree, so first find the appropriate LeafPage for inserting the tuple
+by traversing IndexPage nodes. If overflow, create new LeafPage. getTuple method is to get the iterator information
+and deserialize the tuple to get the appropriate LeafPage. 
+The insert method in IndexPage class is to insert new key and pointer into an internal index node. I approach with
+placing the key in the correct sorted position and adjusts the associated child pointers. When it overflows after
+insertion, it splits to maintain balance, creating a new IndexPage and redistribute the keys. The split method divide
+the keys and pointers, with half remianing in the original IndexPage and moving to new_page to ensure the tree's
+balance and don't exceed their capacity. After the split, the middle key is moved up to the parent node to adjust
+the tree structure. 
+The insertTuple in LeafPage class handles the insertion of a tuple into LeafPage, it maintains the sorted order for
+efficient search and range queries. first inserts the tuple in vec_tuples, and sorts the collection to maintain order.
+If the page is full after insertion, the method returns true to indicate split is needed. The split method calculates
+the midpoint of the tuples, it moves the latter half to new_page. And the original LeafPage retians the first half
+of the tuple. This method is to ensure B+ tree stays balanced and have efficient range queries and sequential
+access. The getTuple method is to get a tuple from given slot within a LeafPage, I use the slot number to access
+the correct offset within the page's data array and deserilized the tuple based on the TupleDesc. 
+
+
+
+2. Describe any missing or incomplete elements of your code.
+I feel like the BTreeFile::insertTuple(): is lacked of detail logics. I'm not sure if there will be any errors
+for larger trees. The recursive splits might propagate up the tree if an indexPage also becomes full after a new
+insertion. Also the use of vector might affect the performance when dealing with larger datasets due to overhead of
+sorting and mangaing memory. I think the getpage() to interact with the buffer pool but I think I could implemneted
+it more for it to properly state wheather its pinned or unpinned to ensure no issue with memory management after pages
+are evicted. I might need more checks for edge cases like inserting a duplicate key or handling an empty tree. 
+
+
+3. Answer the analytical questions.
+Q1.A common strategy employed in production systems is to maintain the internal nodes of indexes to always exist in the 
+bufferpool (or rather, pin them to memory). Discuss why this is a good idea and if there are any implications of this 
+strategy.
+
+This is a good idea because it allows faster access to internal nodes during searches, inserts, and updates. It also reduces 
+the number of disk I/O operations required to access these nodes, speeding up queries. The implications of the strategy consume 
+memory resources from the buffer pool. So it would have less memory available for other data pages, if it takes up a lot of space, 
+it would reduce the overall effectiveness of the buffer pool for other operations.
+
+
+Q2.Maintaining an index of a file can slow down insertions and deletions as the index needs to be updated. However, it can speed up lookups. 
+What are some strategies to minimize the impact of index maintenance on bulk insertions and deletions? What do you need to change in the implementation to 
+support these strategies?
+
+Instead of updating each insertion or deletion, we can batch multiple updates and apply them in a single operation, so it reduce index modifications. We can also modify 
+the index update logic to accept batches of operations, allowing more efficient updates. Also, use a bulk-loading method for more effective insertions, by using bulk-load, 
+it minimize the number of splits and reorganizations that was needed.
+
+
+Q3.A common workload for database tables is to insert new entries with an auto-incrementing key. How can you optimize the BTreeFile for this workload?
+
+We can use a memory buffer that holds new entries before flushing. them into B+Tree. When the buffer reaches a threshold, sort the entries and insert them in bulk into the 
+B+ tree, by doing this it minimize the number of interactions with the disk. Also, ensure the buffer is flushed before a query that requires accessing to maintain 
+consistency. 
+
+
+4. Describe how long you spent on the assignment, and whether there was anything you found particularly difficult or confusing.
+I Approximately spent about three days and total of 20 hours on the assignment. I found that the integration
+of the bufferpool take most of the time. And the logic was challenging for me. Understanding and implementing
+the interactions between B+ tree and the Bufferpool required a good understanding of how pages should be
+pinned, unpinned, and managed in memory. Also making sure the balance after splitting and moving the correct
+to the parent node after the leafpage is being splited. Also with the iterator logic, making it clear 
+when it reach the end of one LeafPage and moving to the next needs careful thoughts to make sure the iterator
+is in the correct node. 
+
+
